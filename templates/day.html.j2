@@ -11,18 +11,32 @@
   nav a:hover { text-decoration: underline; }
   h1 { font-size: 1.75rem; letter-spacing: -0.5px; margin: 0 0 0.2rem; }
   .date { color: #999; font-size: 0.875rem; margin-bottom: 2.5rem; }
-  .item { margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid #eee; }
-  .item:last-child { border-bottom: none; }
-  .item h2 { font-size: 1.1rem; margin: 0 0 0.3rem; line-height: 1.4; }
-  .meta { font-size: 0.8rem; color: #999; margin-bottom: 0.75rem; }
-  .meta .source { font-weight: bold; color: #666; }
-  .meta a { color: #777; text-decoration: none; }
+  .item { display: flex; gap: 1rem; margin-bottom: 0; padding: 1.25rem 0; border-bottom: 1px solid #e8e8e8; }
+  .item:first-of-type { border-top: 1px solid #e8e8e8; }
+  .rank { font-size: 0.8rem; color: #ccc; min-width: 1.5rem; padding-top: 0.2rem; text-align: right; flex-shrink: 0; }
+  .item-body { flex: 1; min-width: 0; }
+  .item-body h2 { font-size: 1rem; margin: 0 0 0.2rem; line-height: 1.4; }
+  .item-body h2 a { color: #1a1a1a; text-decoration: none; }
+  .item-body h2 a:hover { text-decoration: underline; }
+  .meta { font-size: 0.78rem; color: #aaa; margin-bottom: 0; }
+  .meta .source { font-weight: bold; color: #888; }
+  .meta a { color: #aaa; text-decoration: none; }
   .meta a:hover { text-decoration: underline; }
-  .content { font-size: 0.95rem; }
-  .content p { margin: 0.6rem 0; }
-  .content a { color: #444; }
-  .comics { margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid #eee; }
-  .comics h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 1.5rem; }
+  details { margin-top: 0.6rem; }
+  summary { font-size: 0.85rem; color: #888; cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▶ "; font-size: 0.65rem; }
+  details[open] summary::before { content: "▼ "; }
+  summary:hover { color: #444; }
+  .preview { display: inline; }
+  .content { font-size: 0.9rem; margin-top: 0.75rem; }
+  .content p { margin: 0.5rem 0; }
+  .content a { color: #555; }
+  .comics { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 2px solid #eee; }
+  .comics .section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #bbb; margin-bottom: 1rem; }
+  .comic-item { padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0; }
+  .comic-item:last-child { border-bottom: none; }
+  .comic-item h2 { font-size: 0.95rem; margin: 0 0 0.2rem; }
   footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.8rem; color: #bbb; }
 </style>
 </head>
@@ -36,28 +50,34 @@
 
 {% for item in ranked %}
 <div class="item">
-  <h2>{{ item.title }}</h2>
-  <div class="meta">
-    <span class="source">{{ item.source }}</span>
-    · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Read original →</a>
+  <div class="rank">{{ item.rank }}</div>
+  <div class="item-body">
+    <h2><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a></h2>
+    <div class="meta">
+      <span class="source">{{ item.source }}</span>
+      · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">original →</a>
+    </div>
+    {% if item.content %}
+    <details>
+      <summary><span class="preview">{{ item.content | striptags | truncate(200, end='…') }}</span></summary>
+      {# content is pre-processed HTML from RSS/trafilatura — sources are a
+         fixed trusted allow-list configured by the site owner. #}
+      <div class="content">{{ item.content | safe }}</div>
+    </details>
+    {% endif %}
   </div>
-  {% if item.content %}
-  {# content is pre-processed HTML from RSS/trafilatura — sources are a
-     fixed trusted allow-list configured by the site owner. #}
-  <div class="content">{{ item.content | safe }}</div>
-  {% endif %}
 </div>
 {% endfor %}
 
 {% if comics %}
 <div class="comics">
-  <h2>Comics</h2>
+  <div class="section-label">Comics</div>
   {% for item in comics %}
-  <div class="item">
+  <div class="comic-item">
     <h2>{{ item.title }}</h2>
     <div class="meta">
       <span class="source">{{ item.source }}</span>
-      · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">View →</a>
+      · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">view →</a>
     </div>
     {% if item.content %}
     {# content is pre-processed HTML from RSS/trafilatura — sources are a
