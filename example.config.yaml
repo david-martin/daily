@@ -4,12 +4,12 @@ sources:
     url: "https://example.com/news/rss"
 
   # Hacker News top stories (standard RSS)
-  - name: "Hacker News"
-    url: "https://news.ycombinator.com/rss"
+  - name: "Tech News"
+    url: "https://example.com/tech-news/rss"
 
   # Subreddit (Reddit exposes standard RSS for any subreddit)
-  - name: "r/example"
-    url: "https://www.reddit.com/r/example/.rss"
+  - name: "Community Forum"
+    url: "https://example.com/community/rss"
 
   # Substack — full article text is usually in the RSS feed
   - name: "Example Newsletter"

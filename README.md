@@ -42,7 +42,7 @@ Edit `config.yaml` — add your RSS sources and write your scoring profile.
 ## Run
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... python daily.py --config config.yaml
+ANTHROPIC_API_KEY=YOUR_API_KEY python daily.py --config config.yaml
 ```
 
 HTML files appear in the `output_dir` you configured. Serve that directory with
@@ -84,5 +84,5 @@ Persistent=true
 [Service]
 Type=oneshot
 ExecStart=/path/to/.venv/bin/python /path/to/daily.py --config /path/to/config.yaml
-Environment=ANTHROPIC_API_KEY=sk-ant-...
+Environment=ANTHROPIC_API_KEY=YOUR_API_KEY
 ```
