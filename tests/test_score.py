@@ -112,6 +112,17 @@ def test_score_items_raises_on_malformed_response(cfg, items):
             score_items(items, cfg, "key")
 
 
+def test_score_items_handles_markdown_fenced_response(cfg, items):
+    scores = [{"id": i, "score": 5 + i} for i in range(5)]
+    fenced = f"```json\n{json.dumps(scores)}\n```"
+    mock_msg = MagicMock()
+    mock_msg.content = [MagicMock(text=fenced)]
+    with patch("anthropic.Anthropic") as mock_cls:
+        mock_cls.return_value.messages.create.return_value = mock_msg
+        result = score_items(items, cfg, "key")
+    assert len(result) == 3
+
+
 def test_score_items_handles_partial_response(cfg, items):
     # Model returns scores for only items 0, 2, 4 — items 1 and 3 get score 0 (below min)
     scores = [{"id": 0, "score": 8}, {"id": 2, "score": 7}, {"id": 4, "score": 9}]

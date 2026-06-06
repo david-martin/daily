@@ -72,7 +72,13 @@ def score_items(
     )
 
     try:
-        scores = json.loads(message.content[0].text.strip())
+        raw = message.content[0].text.strip()
+        # Strip markdown code fences if the model wrapped the JSON
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[^\n]*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw)
+        logger.debug("score API raw response: %s", raw[:200])
+        scores = json.loads(raw)
         score_map = {entry["id"]: float(entry["score"]) for entry in scores}
     except (json.JSONDecodeError, KeyError, ValueError) as e:
         raise ScoreError(f"invalid score response from API: {e}") from e
