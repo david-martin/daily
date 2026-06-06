@@ -1,5 +1,10 @@
 from dataclasses import dataclass
+from pathlib import Path
 import yaml
+
+
+class ConfigError(Exception):
+    pass
 
 
 @dataclass
@@ -25,30 +30,38 @@ class Config:
     model: str = "claude-haiku-4-5-20251001"
 
 
-def load(path: str) -> Config:
-    with open(path) as f:
-        data = yaml.safe_load(f)
+def load(path: str | Path) -> Config:
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except FileNotFoundError:
+        raise ConfigError(f"config file not found: {path}")
+    except yaml.YAMLError as e:
+        raise ConfigError(f"invalid YAML in {path}: {e}")
 
-    sources = [
-        Source(
-            name=s["name"],
-            url=s["url"],
-            comic=s.get("comic", False),
+    try:
+        sources = [
+            Source(
+                name=s["name"],
+                url=s["url"],
+                comic=s.get("comic", False),
+            )
+            for s in data["sources"]
+        ]
+
+        sd = data["scoring"]
+        scoring = Scoring(
+            profile=sd["profile"],
+            categories=sd["categories"],
+            top_n=sd.get("top_n", 10),
+            min_score=float(sd.get("min_score", 4.0)),
         )
-        for s in data["sources"]
-    ]
 
-    sd = data["scoring"]
-    scoring = Scoring(
-        profile=sd["profile"],
-        categories=sd["categories"],
-        top_n=sd.get("top_n", 10),
-        min_score=float(sd.get("min_score", 4.0)),
-    )
-
-    return Config(
-        sources=sources,
-        scoring=scoring,
-        output_dir=data["output_dir"],
-        model=data.get("model", "claude-haiku-4-5-20251001"),
-    )
+        return Config(
+            sources=sources,
+            scoring=scoring,
+            output_dir=data["output_dir"],
+            model=data.get("model", "claude-haiku-4-5-20251001"),
+        )
+    except (KeyError, TypeError) as e:
+        raise ConfigError(f"invalid config in {path}: missing or malformed key {e}")
