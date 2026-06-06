@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>daily — {{ date_str }}</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 780px; margin: 2rem auto; padding: 0 1.25rem; color: #1a1a1a; line-height: 1.65; }
+  nav { margin-bottom: 2rem; font-size: 0.875rem; color: #777; }
+  nav a { color: #555; text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  h1 { font-size: 1.75rem; letter-spacing: -0.5px; margin: 0 0 0.2rem; }
+  .date { color: #999; font-size: 0.875rem; margin-bottom: 2.5rem; }
+  .item { margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid #eee; }
+  .item:last-child { border-bottom: none; }
+  .item h2 { font-size: 1.1rem; margin: 0 0 0.3rem; line-height: 1.4; }
+  .meta { font-size: 0.8rem; color: #999; margin-bottom: 0.75rem; }
+  .meta .source { font-weight: bold; color: #666; }
+  .meta a { color: #777; text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .content { font-size: 0.95rem; }
+  .content p { margin: 0.6rem 0; }
+  .content a { color: #444; }
+  .comics { margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid #eee; }
+  .comics h2 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 1.5rem; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.8rem; color: #bbb; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">all briefings</a>
+  {% if prev_date %} · <a href="{{ prev_date }}.html">← {{ prev_date }}</a>{% endif %}
+</nav>
+<h1>d<strong>ai</strong>ly</h1>
+<div class="date">{{ date_str }}</div>
+
+{% for item in ranked %}
+<div class="item">
+  <h2>{{ item.title }}</h2>
+  <div class="meta">
+    <span class="source">{{ item.source }}</span>
+    · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Read original →</a>
+  </div>
+  {% if item.content %}
+  <div class="content">{{ item.content | safe }}</div>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if comics %}
+<div class="comics">
+  <h2>Comics</h2>
+  {% for item in comics %}
+  <div class="item">
+    <h2>{{ item.title }}</h2>
+    <div class="meta">
+      <span class="source">{{ item.source }}</span>
+      · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">View →</a>
+    </div>
+    {% if item.content %}
+    <div class="content">{{ item.content | safe }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<footer>{{ date_str }}</footer>
+</body>
+</html>
