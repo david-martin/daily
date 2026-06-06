@@ -1,6 +1,4 @@
-import pytest
 import yaml
-from pathlib import Path
 from config import load, Config, Source, Scoring
 
 
