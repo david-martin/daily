@@ -1,0 +1,39 @@
+sources:
+  # Standard RSS feed — trafilatura fetches full article if feed only has summary
+  - name: "Local News"
+    url: "https://example.com/news/rss"
+
+  # Hacker News top stories (standard RSS)
+  - name: "Hacker News"
+    url: "https://news.ycombinator.com/rss"
+
+  # Subreddit (Reddit exposes standard RSS for any subreddit)
+  - name: "r/example"
+    url: "https://www.reddit.com/r/example/.rss"
+
+  # Substack — full article text is usually in the RSS feed
+  - name: "Example Newsletter"
+    url: "https://example.substack.com/feed"
+
+  # Comic: skips scoring, deduped by URL, renders image as link
+  - name: "Example Comic"
+    url: "https://example.com/comic/rss"
+    comic: true
+
+scoring:
+  profile: |
+    I live in [City], [Country]. I work in [field, e.g. software, finance].
+    My interests include [topic 1], [topic 2], [topic 3].
+  categories:
+    - "Local news"
+    - "Work / professional topics"
+    - "Personal interests"
+    - "Comics"
+  top_n: 10      # keep the top N items by score
+  min_score: 4   # discard items scoring below this (1–10 scale)
+
+# Directory where HTML files are written
+output_dir: /path/to/public
+
+# Claude model for scoring (haiku is sufficient and cheap for a daily batch)
+model: claude-haiku-4-5-20251001
