@@ -1,6 +1,27 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Tests and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
 *.db
+*.sqlite
+*.sqlite3
+
+# Environment and secrets
 .venv/
 .env
 config.yaml
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
