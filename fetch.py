@@ -9,6 +9,7 @@ import trafilatura
 logger = logging.getLogger(__name__)
 
 CONTENT_THRESHOLD = 300
+_UA = "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
 
 
 @dataclass
@@ -71,7 +72,11 @@ def _extract_comic(entry) -> Optional[str]:
 
 
 def fetch_source(name: str, url: str, comic: bool = False) -> list[FetchedItem]:
-    feed = feedparser.parse(url)
+    feed = feedparser.parse(url, agent=_UA)
+    status = getattr(feed, "status", 200)
+    if isinstance(status, int) and status >= 400:
+        logger.warning("Feed %s returned HTTP %s", name, status)
+        return []
     if feed.bozo and not feed.entries:
         logger.warning("Failed to parse feed %s: %s", name, feed.bozo_exception)
         return []
