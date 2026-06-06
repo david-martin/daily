@@ -3,26 +3,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS briefings (
-    date         TEXT PRIMARY KEY,
-    generated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS items (
-    id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    date     TEXT    NOT NULL,
-    title    TEXT    NOT NULL,
-    url      TEXT    NOT NULL,
-    source   TEXT    NOT NULL,
-    content  TEXT,
-    score    REAL,
-    is_comic INTEGER DEFAULT 0,
-    rank     INTEGER
-);
-"""
-
-
 @dataclass
 class Item:
     title: str
@@ -36,7 +16,26 @@ class Item:
 
 def init(db_path: str) -> None:
     with sqlite3.connect(db_path) as conn:
-        conn.executescript(SCHEMA)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS briefings (
+                date         TEXT PRIMARY KEY,
+                generated_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS items (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                date     TEXT    NOT NULL,
+                title    TEXT    NOT NULL,
+                url      TEXT    NOT NULL,
+                source   TEXT    NOT NULL,
+                content  TEXT,
+                score    REAL,
+                is_comic INTEGER DEFAULT 0,
+                rank     INTEGER
+            )
+        """)
+    conn.close()
 
 
 def comic_seen(db_path: str, url: str) -> bool:
@@ -44,7 +43,8 @@ def comic_seen(db_path: str, url: str) -> bool:
         row = conn.execute(
             "SELECT 1 FROM items WHERE url = ? AND is_comic = 1", (url,)
         ).fetchone()
-        return row is not None
+    conn.close()
+    return row is not None
 
 
 def store_briefing(
@@ -67,6 +67,7 @@ def store_briefing(
                 (date_str, item.title, item.url, item.source, item.content,
                  item.score, int(item.is_comic), item.rank),
             )
+    conn.close()
 
 
 def get_items_for_date(db_path: str, date_str: str) -> list[Item]:
@@ -77,6 +78,7 @@ def get_items_for_date(db_path: str, date_str: str) -> list[Item]:
                ORDER BY is_comic ASC, rank ASC NULLS LAST""",
             (date_str,),
         ).fetchall()
+    conn.close()
     return [
         Item(title=r[0], url=r[1], source=r[2], content=r[3],
              score=r[4], is_comic=bool(r[5]), rank=r[6])
@@ -89,6 +91,7 @@ def get_briefing_dates(db_path: str) -> list[str]:
         rows = conn.execute(
             "SELECT date FROM briefings ORDER BY date DESC"
         ).fetchall()
+    conn.close()
     return [r[0] for r in rows]
 
 
@@ -98,4 +101,5 @@ def prev_briefing_date(db_path: str, date_str: str) -> Optional[str]:
             "SELECT date FROM briefings WHERE date < ? ORDER BY date DESC LIMIT 1",
             (date_str,),
         ).fetchone()
+    conn.close()
     return row[0] if row else None

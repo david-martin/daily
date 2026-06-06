@@ -59,3 +59,27 @@ def test_prev_briefing_date(db_path):
         store_briefing(db_path, d, f"{d}T07:00:00Z", [])
     assert prev_briefing_date(db_path, "2026-06-06") == "2026-06-05"
     assert prev_briefing_date(db_path, "2026-06-04") is None
+
+
+def test_get_items_for_date_orders_comics_last(db_path):
+    items = [
+        Item(title="Comic", url="https://xkcd.com/1/", source="XKCD",
+             content="<a>[image →]</a>", score=None, is_comic=True, rank=None),
+        Item(title="Article A", url="https://example.com/a", source="Feed",
+             content="<p>content</p>", score=9.0, is_comic=False, rank=1),
+        Item(title="Article B", url="https://example.com/b", source="Feed",
+             content="<p>content</p>", score=7.0, is_comic=False, rank=2),
+    ]
+    store_briefing(db_path, "2026-06-06", "2026-06-06T07:00:00Z", items)
+    result = get_items_for_date(db_path, "2026-06-06")
+    assert result[0].title == "Article A"
+    assert result[1].title == "Article B"
+    assert result[2].title == "Comic"
+    assert result[2].is_comic is True
+
+
+def test_comic_seen_does_not_match_non_comic(db_path):
+    items = [Item(title="Article", url="https://example.com/1", source="Feed",
+                  content="<p>text</p>", score=7.0, is_comic=False, rank=1)]
+    store_briefing(db_path, "2026-06-06", "2026-06-06T07:00:00Z", items)
+    assert comic_seen(db_path, "https://example.com/1") is False
