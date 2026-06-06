@@ -1,4 +1,6 @@
 import logging
+import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -9,10 +11,11 @@ from db import Item
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=None)
 def _env(templates_dir: str) -> Environment:
     return Environment(
         loader=FileSystemLoader(templates_dir),
-        autoescape=select_autoescape(["html"]),
+        autoescape=select_autoescape(["html", "html.j2"]),
     )
 
 
@@ -25,6 +28,8 @@ def generate_day(
 ) -> None:
     ranked = [i for i in items if not i.is_comic]
     comics = [i for i in items if i.is_comic]
+    if prev_date is not None and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", prev_date):
+        raise ValueError(f"prev_date must be YYYY-MM-DD, got: {prev_date!r}")
     html = _env(templates_dir).get_template("day.html.j2").render(
         date_str=date_str, ranked=ranked, comics=comics, prev_date=prev_date,
     )

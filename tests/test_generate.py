@@ -67,3 +67,12 @@ def test_generate_index_lists_dates(tmp_path):
     assert "2026-06-06" in html
     assert "2026-06-05" in html
     assert "2026-06-06.html" in html
+
+
+def test_xss_in_title_is_escaped(tmp_path):
+    xss_items = [Item(title='<script>alert(1)</script>', url='https://example.com',
+                      source='Feed', content=None, score=9.0, is_comic=False, rank=1)]
+    generate.generate_day(str(tmp_path), TEMPLATES, "2026-06-06", xss_items, prev_date=None)
+    html = (tmp_path / "2026-06-06.html").read_text()
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html

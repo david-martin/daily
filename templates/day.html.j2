@@ -42,6 +42,8 @@
     · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Read original →</a>
   </div>
   {% if item.content %}
+  {# content is pre-processed HTML from RSS/trafilatura — sources are a
+     fixed trusted allow-list configured by the site owner. #}
   <div class="content">{{ item.content | safe }}</div>
   {% endif %}
 </div>
@@ -58,6 +60,8 @@
       · <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">View →</a>
     </div>
     {% if item.content %}
+    {# content is pre-processed HTML from RSS/trafilatura — sources are a
+       fixed trusted allow-list configured by the site owner. #}
     <div class="content">{{ item.content | safe }}</div>
     {% endif %}
   </div>
