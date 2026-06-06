@@ -1,6 +1,27 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from fetch import fetch_source, _strip_images, FetchedItem
+from fetch import fetch_source, _strip_images, _reddit_embed, FetchedItem
+
+
+def test_reddit_embed_returns_iframe_for_reddit_url():
+    url = "https://www.reddit.com/r/gaming/comments/abc123/some_post/"
+    result = _reddit_embed(url)
+    assert result is not None
+    assert "redditmedia.com" in result
+    assert "embed=true" in result
+    assert "<iframe" in result
+
+
+def test_reddit_embed_strips_trailing_slash_before_appending():
+    url = "https://reddit.com/r/pcgaming/comments/xyz789/title"
+    result = _reddit_embed(url)
+    assert "/?embed=true" in result
+    assert "//?embed=true" not in result
+
+
+def test_reddit_embed_returns_none_for_non_reddit_url():
+    assert _reddit_embed("https://example.com/article") is None
+    assert _reddit_embed("https://news.ycombinator.com/item?id=123") is None
 
 
 def test_strip_images_replaces_with_link():

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 CONTENT_THRESHOLD = 300
 _UA = "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
+_REDDIT_URL = re.compile(r"^https://(?:www\.)?reddit\.com/r/\w+/comments/\w+")
 
 
 @dataclass
@@ -29,16 +30,30 @@ def _strip_images(html: str) -> str:
     return re.sub(r"<img[^>]+>", replace_img, html, flags=re.IGNORECASE)
 
 
+def _reddit_embed(url: str) -> Optional[str]:
+    if not _REDDIT_URL.match(url):
+        return None
+    embed_url = re.sub(r"^https://(?:www\.)?reddit\.com", "https://www.redditmedia.com", url)
+    embed_url = embed_url.rstrip("/") + "/?embed=true"
+    return (
+        f'<iframe src="{embed_url}" style="border:none;width:100%;height:500px" '
+        f'scrolling="no" allowfullscreen></iframe>'
+    )
+
+
 def _extract_content(entry) -> Optional[str]:
+    url = entry.get("link", "")
+    embed = _reddit_embed(url)
+
     # 1. content:encoded if substantial
     if getattr(entry, "content", None):
         for c in entry.content:
             val = c.get("value", "")
             if len(val) > CONTENT_THRESHOLD:
-                return _strip_images(val)
+                body = _strip_images(val)
+                return (embed + "\n" + body) if embed else body
 
     # 2. trafilatura on linked URL
-    url = entry.get("link")
     if url:
         try:
             downloaded = trafilatura.fetch_url(url)
@@ -46,16 +61,18 @@ def _extract_content(entry) -> Optional[str]:
                 plain = trafilatura.extract(downloaded)
                 if plain and len(plain) > CONTENT_THRESHOLD:
                     paragraphs = [p.strip() for p in plain.split("\n\n") if p.strip()]
-                    return "<p>" + "</p>\n<p>".join(paragraphs) + "</p>"
+                    body = "<p>" + "</p>\n<p>".join(paragraphs) + "</p>"
+                    return (embed + "\n" + body) if embed else body
         except Exception as e:
             logger.warning("trafilatura failed for %s: %s", url, e)
 
     # 3. description/summary fallback
     desc = entry.get("summary") or entry.get("description", "")
     if desc:
-        return _strip_images(desc)
+        body = _strip_images(desc)
+        return (embed + "\n" + body) if embed else body
 
-    return None
+    return embed  # embed alone if no text content
 
 
 def _extract_comic(entry) -> Optional[str]:
