@@ -12,6 +12,10 @@ from fetch import FetchedItem
 logger = logging.getLogger(__name__)
 
 
+class ScoreError(Exception):
+    pass
+
+
 @dataclass
 class ScoredItem:
     title: str
@@ -25,7 +29,7 @@ class ScoredItem:
 
 def _build_prompt(items: list[FetchedItem], config: Config) -> str:
     categories = "\n".join(
-        f"  {i + 1}. {c}" for i, c in enumerate(config.scoring.categories)
+        f"  - {c}" for c in config.scoring.categories
     )
     item_lines = []
     for i, item in enumerate(items):
@@ -39,7 +43,7 @@ def _build_prompt(items: list[FetchedItem], config: Config) -> str:
 
 {config.scoring.profile}
 
-Category priority (higher number = higher priority):
+Category priority (listed highest to lowest priority):
 {categories}
 
 Return ONLY a JSON array with no other text:
@@ -63,12 +67,21 @@ def score_items(
 
     message = client.messages.create(
         model=config.model,
-        max_tokens=1024,
+        max_tokens=max(1024, len(items) * 30),
         messages=[{"role": "user", "content": prompt}],
     )
 
-    scores = json.loads(message.content[0].text.strip())
-    score_map = {entry["id"]: float(entry["score"]) for entry in scores}
+    try:
+        scores = json.loads(message.content[0].text.strip())
+        score_map = {entry["id"]: float(entry["score"]) for entry in scores}
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        raise ScoreError(f"invalid score response from API: {e}") from e
+
+    if len(score_map) < len(items):
+        logger.warning(
+            "Model returned scores for %d of %d items; %d will be scored 0",
+            len(score_map), len(items), len(items) - len(score_map),
+        )
 
     candidates = [
         (i, score_map.get(i, 0.0))

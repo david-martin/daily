@@ -1,7 +1,7 @@
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from score import score_items, _build_prompt, ScoredItem
+from score import score_items, _build_prompt, ScoredItem, ScoreError
 from fetch import FetchedItem
 from config import Config, Source, Scoring
 
@@ -99,5 +99,32 @@ def test_score_items_uses_configured_model(cfg, items):
         mock_instance = mock_cls.return_value
         mock_instance.messages.create.return_value = _mock_response(scores)
         score_items(items, cfg, "key")
-        call_kwargs = mock_instance.messages.create.call_args[1]
+        call_kwargs = mock_instance.messages.create.call_args.kwargs
         assert call_kwargs["model"] == "claude-haiku-4-5-20251001"
+
+
+def test_score_items_raises_on_malformed_response(cfg, items):
+    mock_msg = MagicMock()
+    mock_msg.content = [MagicMock(text="Sorry, I cannot score these items.")]
+    with patch("anthropic.Anthropic") as mock_cls:
+        mock_cls.return_value.messages.create.return_value = mock_msg
+        with pytest.raises(ScoreError):
+            score_items(items, cfg, "key")
+
+
+def test_score_items_handles_partial_response(cfg, items):
+    # Model returns scores for only items 0, 2, 4 — items 1 and 3 get score 0 (below min)
+    scores = [{"id": 0, "score": 8}, {"id": 2, "score": 7}, {"id": 4, "score": 9}]
+    with patch("anthropic.Anthropic") as mock_cls:
+        mock_cls.return_value.messages.create.return_value = _mock_response(scores)
+        result = score_items(items, cfg, "key")
+    assert len(result) == 3
+    assert all(r.score >= 4.0 for r in result)
+
+
+def test_score_items_forwards_api_key(cfg, items):
+    scores = [{"id": i, "score": 5} for i in range(5)]
+    with patch("anthropic.Anthropic") as mock_cls:
+        mock_cls.return_value.messages.create.return_value = _mock_response(scores)
+        score_items(items, cfg, "my-secret-key")
+        assert mock_cls.call_args.kwargs["api_key"] == "my-secret-key"
