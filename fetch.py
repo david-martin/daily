@@ -64,15 +64,16 @@ def _extract_comic(entry) -> Optional[str]:
         return f'<a href="{src.group(1)}">[image →]</a>'
     for enc in getattr(entry, "enclosures", []):
         if enc.get("type", "").startswith("image/"):
-            return f'<a href="{enc["href"]}">[image →]</a>'
+            href = enc.get("href")
+            if href:
+                return f'<a href="{href}">[image →]</a>'
     return None
 
 
 def fetch_source(name: str, url: str, comic: bool = False) -> list[FetchedItem]:
-    try:
-        feed = feedparser.parse(url)
-    except Exception as e:
-        logger.warning("Failed to fetch feed %s: %s", name, e)
+    feed = feedparser.parse(url)
+    if feed.bozo and not feed.entries:
+        logger.warning("Failed to parse feed %s: %s", name, feed.bozo_exception)
         return []
 
     items = []

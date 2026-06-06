@@ -18,7 +18,11 @@ def test_strip_images_no_src_removes_tag():
 
 
 def test_fetch_source_returns_empty_on_feed_failure():
-    with patch("feedparser.parse", side_effect=Exception("timeout")):
+    mock_feed = MagicMock()
+    mock_feed.bozo = True
+    mock_feed.bozo_exception = Exception("DNS failure")
+    mock_feed.entries = []
+    with patch("feedparser.parse", return_value=mock_feed):
         items = fetch_source("Test", "https://example.com/rss")
     assert items == []
 
