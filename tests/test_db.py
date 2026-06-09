@@ -35,9 +35,19 @@ def test_comic_seen_false_for_new(db_path):
 
 def test_comic_seen_true_after_store(db_path):
     items = [Item(title="XKCD 1", url="https://xkcd.com/123/", source="XKCD",
-                  content='<a href="x">[image →]</a>', score=None, is_comic=True, rank=None)]
+                  content='<img src="x">', score=None, is_comic=True, rank=None)]
     store_briefing(db_path, "2026-06-05", "2026-06-05T07:00:00Z", items)
     assert comic_seen(db_path, "https://xkcd.com/123/") is True
+
+
+def test_comic_seen_ignores_same_day(db_path):
+    items = [Item(title="XKCD", url="https://xkcd.com/1/", source="XKCD",
+                  content='<img src="x">', score=None, is_comic=True, rank=None)]
+    store_briefing(db_path, "2026-06-06", "2026-06-06T07:00:00Z", items)
+    # Same day should not count as "seen before"
+    assert comic_seen(db_path, "https://xkcd.com/1/", before_date="2026-06-06") is False
+    # A later date should see it as previously shown
+    assert comic_seen(db_path, "https://xkcd.com/1/", before_date="2026-06-07") is True
 
 
 def test_store_is_idempotent(db_path):

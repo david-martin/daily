@@ -45,11 +45,17 @@ def init(db_path: str) -> None:
     conn.close()
 
 
-def comic_seen(db_path: str, url: str) -> bool:
+def comic_seen(db_path: str, url: str, before_date: Optional[str] = None) -> bool:
     with sqlite3.connect(db_path) as conn:
-        row = conn.execute(
-            "SELECT 1 FROM items WHERE url = ? AND is_comic = 1", (url,)
-        ).fetchone()
+        if before_date:
+            row = conn.execute(
+                "SELECT 1 FROM items WHERE url = ? AND is_comic = 1 AND date < ?",
+                (url, before_date),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT 1 FROM items WHERE url = ? AND is_comic = 1", (url,)
+            ).fetchone()
     conn.close()
     return row is not None
 

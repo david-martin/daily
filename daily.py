@@ -55,7 +55,7 @@ def main() -> None:
     comics = [i for i in all_items if i.is_comic]
     regular = [i for i in all_items if not i.is_comic]
 
-    new_comics = [c for c in comics if not db.comic_seen(args.db, c.url)]
+    new_comics = [c for c in comics if not db.comic_seen(args.db, c.url, before_date=today)]
     logger.info("%d new comic(s)", len(new_comics))
 
     logger.info("Scoring %d regular items", len(regular))
