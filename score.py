@@ -72,7 +72,7 @@ def score_items(
 
     message = client.messages.create(
         model=config.model,
-        max_tokens=max(2048, len(items) * 60),
+        max_tokens=min(8192, max(2048, len(items) * 60)),
         messages=[{"role": "user", "content": prompt}],
     )
 
