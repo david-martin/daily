@@ -87,6 +87,7 @@ def main() -> None:
         "model": config.model,
         "categories": config.scoring.categories,
         "top_n": config.scoring.top_n,
+        "min_score": config.scoring.min_score,
         "max_per_source": config.scoring.max_per_source,
         "sources": [s.name for s in config.sources if not s.comic],
     }

@@ -87,9 +87,9 @@
 {% if scoring_info %}
 <div class="algorithm">
   <p>
-    Top {{ scoring_info.top_n }} items from {{ scoring_info.sources | length }} sources, scored 1–10 by
-    <code>{{ scoring_info.model }}</code> on relevance to my interests.
-    At most {{ scoring_info.max_per_source }} items per source.
+    Items scoring {{ scoring_info.min_score | int }}/10 or above from {{ scoring_info.sources | length }} sources,
+    scored by <code>{{ scoring_info.model }}</code> on relevance to my interests.
+    At most {{ scoring_info.max_per_source }} per source.
   </p>
   <details>
     <summary>Scoring categories &amp; sources</summary>

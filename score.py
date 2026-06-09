@@ -47,6 +47,8 @@ def _build_prompt(items: list[FetchedItem], config: Config) -> str:
 Category priority (listed highest to lowest priority):
 {categories}
 
+Scoring guide: 7-10 = clearly relevant and worth reading; 4-6 = tangentially related; 1-3 = not relevant.
+
 Return ONLY a JSON array with no other text. Each entry must include:
 - "id": the item index
 - "score": integer 1-10
@@ -102,6 +104,8 @@ def score_items(
     ]
     candidates.sort(key=lambda x: x[1], reverse=True)
 
+    # Apply per-source cap and safety maximum (top_n).
+    # min_score is the primary filter; top_n is only a runaway guard.
     source_counts: dict[str, int] = {}
     top: list[tuple[int, float]] = []
     for i, score in candidates:
@@ -111,6 +115,7 @@ def score_items(
         source_counts[src] = source_counts.get(src, 0) + 1
         top.append((i, score))
         if len(top) >= config.scoring.top_n:
+            logger.warning("Hit top_n safety cap (%d); raising min_score may help", config.scoring.top_n)
             break
 
     return [
