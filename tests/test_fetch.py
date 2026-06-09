@@ -1,6 +1,9 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from fetch import fetch_source, _strip_images, _reddit_embed, _REDDIT_BOILERPLATE, FetchedItem
+from fetch import (
+    fetch_source, _strip_images, _reddit_embed,
+    _extract_reddit_link, _REDDIT_BOILERPLATE, FetchedItem,
+)
 
 
 def test_reddit_embed_returns_iframe_for_reddit_url():
@@ -22,6 +25,45 @@ def test_reddit_embed_strips_trailing_slash_before_appending():
 def test_reddit_embed_returns_none_for_non_reddit_url():
     assert _reddit_embed("https://example.com/article") is None
     assert _reddit_embed("https://news.ycombinator.com/item?id=123") is None
+
+
+def test_extract_reddit_link_returns_external_url():
+    summary = (
+        '<table><tr><td><a href="https://www.youtube.com/watch?v=abc123">'
+        '<img src="https://external-preview.redd.it/image.jpg"/></a></td>'
+        '<td>submitted by <a href="https://www.reddit.com/user/foo">/u/foo</a>'
+        '<a href="https://www.reddit.com/r/indiegaming/comments/x/y/">[link]</a>'
+        '<a href="https://www.reddit.com/r/indiegaming/comments/x/y/">[comments]</a>'
+        "</td></tr></table>"
+    )
+    result = _extract_reddit_link(summary)
+    assert result == "https://www.youtube.com/watch?v=abc123"
+
+
+def test_extract_reddit_link_ignores_reddit_internal_urls():
+    summary = (
+        '<a href="https://www.reddit.com/r/gaming/comments/1/post/">[link]</a>'
+        '<a href="https://preview.redd.it/img.jpg">img</a>'
+    )
+    assert _extract_reddit_link(summary) is None
+
+
+def test_extract_reddit_link_ignores_image_cdn_and_media_files():
+    summary = (
+        '<a href="https://pbs.twimg.com/media/abc.jpg">tweet img</a>'
+        '<a href="https://example.com/video.mp4">video</a>'
+        '<a href="https://www.reddit.com/r/x/comments/y/z/">[link]</a>'
+    )
+    assert _extract_reddit_link(summary) is None
+
+
+def test_extract_reddit_link_returns_steam_url():
+    summary = (
+        '<a href="https://store.steampowered.com/app/12345/GameName/">Steam</a>'
+        '<a href="https://www.reddit.com/r/indiegaming/comments/x/y/">[comments]</a>'
+    )
+    result = _extract_reddit_link(summary)
+    assert result == "https://store.steampowered.com/app/12345/GameName/"
 
 
 def test_reddit_boilerplate_pattern_matches_typical_reddit_description():
@@ -163,3 +205,46 @@ def test_fetch_source_returns_fetched_item_shape():
     assert items[0].source == "MyFeed"
     assert items[0].url == "https://example.com/test"
     assert items[0].is_comic is False
+
+
+def test_reddit_link_post_uses_external_url():
+    """Item URL should be the external link, not the Reddit comments page."""
+    mock_entry = MagicMock()
+    mock_entry.content = None
+    reddit_url = "https://www.reddit.com/r/gaming/comments/abc123/some_trailer/"
+    youtube_url = "https://www.youtube.com/watch?v=abc123"
+    mock_entry.get.side_effect = lambda k, d="": {
+        "title": "Some Game Trailer",
+        "link": reddit_url,
+        "summary": f'<a href="{youtube_url}"><img src="https://preview.redd.it/img.jpg"/></a>'
+                   f'submitted by /u/user <a href="{reddit_url}">[link]</a>'
+                   f'<a href="{reddit_url}">[comments]</a>',
+        "description": "",
+    }.get(k, d)
+    with patch("feedparser.parse", return_value=_ok_feed(mock_entry)):
+        with patch("trafilatura.fetch_url", return_value=None):
+            items = fetch_source("r/gaming", "https://www.reddit.com/r/gaming/.rss")
+    assert len(items) == 1
+    assert items[0].url == youtube_url
+    assert "<iframe" in (items[0].content or "")
+
+
+def test_reddit_self_post_keeps_reddit_url():
+    """Self-posts have no external link; URL stays as Reddit comments page."""
+    mock_entry = MagicMock()
+    mock_entry.content = None
+    reddit_url = "https://www.reddit.com/r/gaming/comments/xyz789/discussion/"
+    mock_entry.get.side_effect = lambda k, d="": {
+        "title": "What's your favourite retro game?",
+        "link": reddit_url,
+        "summary": (
+            "I love old SNES games. submitted by /u/user "
+            f'<a href="{reddit_url}">[link]</a>'
+            f'<a href="{reddit_url}">[comments]</a>'
+        ),
+        "description": "",
+    }.get(k, d)
+    with patch("feedparser.parse", return_value=_ok_feed(mock_entry)):
+        items = fetch_source("r/gaming", "https://www.reddit.com/r/gaming/.rss")
+    assert len(items) == 1
+    assert items[0].url == reddit_url
