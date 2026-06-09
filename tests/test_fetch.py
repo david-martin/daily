@@ -173,22 +173,42 @@ def test_fetch_source_falls_back_to_description():
     assert items[0].content == "<p>Fallback desc</p>"
 
 
-def test_comic_fetch_extracts_image_from_summary():
+def test_comic_fetch_embeds_image_from_summary():
     mock_entry = MagicMock()
     mock_entry.content = None
     mock_entry.enclosures = []
     img_url = "https://imgs.xkcd.com/comics/test.png"
+    hover = "The punchline nobody asked for."
     mock_entry.get.side_effect = lambda k, d="": {
         "title": "XKCD 123",
         "link": "https://xkcd.com/123/",
-        "summary": f'<img src="{img_url}" />',
+        "summary": f'<img src="{img_url}" alt="XKCD 123" title="{hover}" />',
     }.get(k, d)
     with patch("feedparser.parse", return_value=_ok_feed(mock_entry)):
         items = fetch_source("XKCD", "https://xkcd.com/atom.xml", comic=True)
     assert len(items) == 1
     assert items[0].is_comic is True
-    assert "[image →]" in items[0].content
-    assert img_url in items[0].content
+    content = items[0].content
+    assert "<img" in content
+    assert img_url in content
+    assert hover in content
+    assert "comic-hover" in content
+
+
+def test_comic_fetch_image_without_hover_text():
+    mock_entry = MagicMock()
+    mock_entry.content = None
+    mock_entry.enclosures = []
+    img_url = "https://imgs.xkcd.com/comics/test2.png"
+    mock_entry.get.side_effect = lambda k, d="": {
+        "title": "XKCD 456",
+        "link": "https://xkcd.com/456/",
+        "summary": f'<img src="{img_url}" />',
+    }.get(k, d)
+    with patch("feedparser.parse", return_value=_ok_feed(mock_entry)):
+        items = fetch_source("XKCD", "https://xkcd.com/atom.xml", comic=True)
+    assert "<img" in items[0].content
+    assert "comic-hover" not in items[0].content
 
 
 def test_fetch_source_returns_fetched_item_shape():

@@ -1,6 +1,7 @@
 import re
 import logging
 from dataclasses import dataclass
+from html import escape as _escape
 from typing import Optional
 
 import feedparser
@@ -142,14 +143,32 @@ def _fetch_reddit_content(entry, reddit_url: str, external_url: Optional[str]) -
 
 def _extract_comic(entry) -> Optional[str]:
     html = entry.get("summary", "") or entry.get("description", "")
-    src = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', html, re.IGNORECASE)
-    if src:
-        return f'<a href="{src.group(1)}">[image →]</a>'
+    img_m = re.search(r'<img([^>]+)>', html, re.IGNORECASE)
+    if img_m:
+        attrs = img_m.group(1)
+        src_m = re.search(r'src=["\']([^"\']+)["\']', attrs, re.IGNORECASE)
+        title_m = re.search(r'title=["\']([^"\']*)["\']', attrs, re.IGNORECASE)
+        alt_m = re.search(r'alt=["\']([^"\']*)["\']', attrs, re.IGNORECASE)
+        if src_m:
+            src = src_m.group(1)
+            alt = alt_m.group(1) if alt_m else ""
+            hover = title_m.group(1) if title_m else alt
+            img_tag = (
+                f'<a href="{_escape(src)}" target="_blank" rel="noopener noreferrer">'
+                f'<img src="{_escape(src)}" alt="{_escape(alt)}" '
+                f'style="max-width:100%;height:auto;display:block;"></a>'
+            )
+            if hover:
+                return img_tag + f'\n<p class="comic-hover">{_escape(hover)}</p>'
+            return img_tag
     for enc in getattr(entry, "enclosures", []):
         if enc.get("type", "").startswith("image/"):
             href = enc.get("href")
             if href:
-                return f'<a href="{href}">[image →]</a>'
+                return (
+                    f'<a href="{_escape(href)}" target="_blank" rel="noopener noreferrer">'
+                    f'<img src="{_escape(href)}" alt="" style="max-width:100%;height:auto;display:block;"></a>'
+                )
     return None
 
 
