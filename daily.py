@@ -65,7 +65,7 @@ def main() -> None:
     db_items = [
         db.Item(
             title=s.title, url=s.url, source=s.source, content=s.content,
-            score=s.score, is_comic=False, rank=s.rank,
+            score=s.score, is_comic=False, rank=s.rank, reason=s.reason,
         )
         for s in scored
     ] + [

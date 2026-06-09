@@ -24,6 +24,7 @@ class ScoredItem:
     content: Optional[str]
     score: float
     rank: int
+    reason: Optional[str] = None
     is_comic: bool = False
 
 
@@ -46,8 +47,12 @@ def _build_prompt(items: list[FetchedItem], config: Config) -> str:
 Category priority (listed highest to lowest priority):
 {categories}
 
-Return ONLY a JSON array with no other text:
-[{{"id": 0, "score": 7}}, {{"id": 1, "score": 3}}, ...]
+Return ONLY a JSON array with no other text. Each entry must include:
+- "id": the item index
+- "score": integer 1-10
+- "reason": 6-10 words explaining the specific match — name the category and the concrete hook, not generic phrases like "relevant to interests"
+
+Example: [{{"id": 0, "score": 8, "reason": "AI: practical LLM reasoning benchmark results"}}, ...]
 
 Items to score:
 
@@ -67,7 +72,7 @@ def score_items(
 
     message = client.messages.create(
         model=config.model,
-        max_tokens=max(1024, len(items) * 30),
+        max_tokens=max(2048, len(items) * 60),
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -80,6 +85,7 @@ def score_items(
         logger.debug("score API raw response: %s", raw[:200])
         scores = json.loads(raw)
         score_map = {entry["id"]: float(entry["score"]) for entry in scores}
+        reason_map = {entry["id"]: entry.get("reason") for entry in scores}
     except (json.JSONDecodeError, KeyError, ValueError) as e:
         raise ScoreError(f"invalid score response from API: {e}") from e
 
@@ -115,6 +121,7 @@ def score_items(
             content=items[i].content,
             score=score,
             rank=rank + 1,
+            reason=reason_map.get(i),
             is_comic=False,
         )
         for rank, (i, score) in enumerate(top)

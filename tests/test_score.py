@@ -141,6 +141,50 @@ def test_score_items_forwards_api_key(cfg, items):
         assert mock_cls.call_args.kwargs["api_key"] == "my-secret-key"
 
 
+def test_score_items_parses_reason():
+    scores = [
+        {"id": 0, "score": 8, "reason": "AI: benchmark shows strong reasoning gains"},
+        {"id": 1, "score": 7, "reason": "Gaming: retro console emulation release"},
+    ]
+    items = [
+        FetchedItem(title="AI paper", url="https://a.com/1", source="HN", content="", is_comic=False),
+        FetchedItem(title="Retro game", url="https://b.com/1", source="r/gaming", content="", is_comic=False),
+    ]
+    cfg = Config(
+        sources=[],
+        scoring=Scoring(profile="x", categories=["y"], top_n=5, min_score=4.0),
+        output_dir="/tmp",
+        model="claude-haiku-4-5-20251001",
+    )
+    with patch("anthropic.Anthropic") as mock_cls:
+        mock_cls.return_value.messages.create.return_value = _mock_response(scores)
+        result = score_items(items, cfg, "key")
+    assert result[0].reason == "AI: benchmark shows strong reasoning gains"
+    assert result[1].reason == "Gaming: retro console emulation release"
+
+
+def test_score_items_reason_is_none_when_missing():
+    scores = [{"id": 0, "score": 8}]  # no reason field
+    items = [
+        FetchedItem(title="Article", url="https://a.com/1", source="HN", content="", is_comic=False),
+    ]
+    cfg = Config(
+        sources=[],
+        scoring=Scoring(profile="x", categories=["y"], top_n=5, min_score=4.0),
+        output_dir="/tmp",
+        model="claude-haiku-4-5-20251001",
+    )
+    with patch("anthropic.Anthropic") as mock_cls:
+        mock_cls.return_value.messages.create.return_value = _mock_response(scores)
+        result = score_items(items, cfg, "key")
+    assert result[0].reason is None
+
+
+def test_build_prompt_requests_reason(cfg, items):
+    prompt = _build_prompt(items, cfg)
+    assert "reason" in prompt
+
+
 def test_score_items_caps_per_source(cfg):
     # 4 items from "Feed A" all scoring high, 1 item from "Feed B" scoring lower
     mixed_items = [

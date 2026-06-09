@@ -12,6 +12,7 @@ class Item:
     score: Optional[float]
     is_comic: bool
     rank: Optional[int]
+    reason: Optional[str] = None
 
 
 def init(db_path: str) -> None:
@@ -32,9 +33,15 @@ def init(db_path: str) -> None:
                 content  TEXT,
                 score    REAL,
                 is_comic INTEGER DEFAULT 0,
-                rank     INTEGER
+                rank     INTEGER,
+                reason   TEXT
             )
         """)
+        # Migration: add reason column to existing databases
+        try:
+            conn.execute("ALTER TABLE items ADD COLUMN reason TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.close()
 
 
@@ -62,10 +69,10 @@ def store_briefing(
         for item in items:
             conn.execute(
                 """INSERT INTO items
-                   (date, title, url, source, content, score, is_comic, rank)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (date, title, url, source, content, score, is_comic, rank, reason)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (date_str, item.title, item.url, item.source, item.content,
-                 item.score, int(item.is_comic), item.rank),
+                 item.score, int(item.is_comic), item.rank, item.reason),
             )
     conn.close()
 
@@ -73,7 +80,7 @@ def store_briefing(
 def get_items_for_date(db_path: str, date_str: str) -> list[Item]:
     with sqlite3.connect(db_path) as conn:
         rows = conn.execute(
-            """SELECT title, url, source, content, score, is_comic, rank
+            """SELECT title, url, source, content, score, is_comic, rank, reason
                FROM items WHERE date = ?
                ORDER BY is_comic ASC, rank ASC NULLS LAST""",
             (date_str,),
@@ -81,7 +88,7 @@ def get_items_for_date(db_path: str, date_str: str) -> list[Item]:
     conn.close()
     return [
         Item(title=r[0], url=r[1], source=r[2], content=r[3],
-             score=r[4], is_comic=bool(r[5]), rank=r[6])
+             score=r[4], is_comic=bool(r[5]), rank=r[6], reason=r[7])
         for r in rows
     ]
 
