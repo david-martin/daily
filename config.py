@@ -20,6 +20,7 @@ class Scoring:
     categories: list[str]
     top_n: int = 10
     min_score: float = 4.0
+    max_per_source: int = 3
 
 
 @dataclass
@@ -55,6 +56,7 @@ def load(path: str | Path) -> Config:
             categories=sd["categories"],
             top_n=sd.get("top_n", 10),
             min_score=float(sd.get("min_score", 4.0)),
+            max_per_source=int(sd.get("max_per_source", 3)),
         )
 
         return Config(

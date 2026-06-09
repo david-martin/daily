@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from fetch import fetch_source, _strip_images, _reddit_embed, FetchedItem
+from fetch import fetch_source, _strip_images, _reddit_embed, _REDDIT_BOILERPLATE, FetchedItem
 
 
 def test_reddit_embed_returns_iframe_for_reddit_url():
@@ -22,6 +22,16 @@ def test_reddit_embed_strips_trailing_slash_before_appending():
 def test_reddit_embed_returns_none_for_non_reddit_url():
     assert _reddit_embed("https://example.com/article") is None
     assert _reddit_embed("https://news.ycombinator.com/item?id=123") is None
+
+
+def test_reddit_boilerplate_pattern_matches_typical_reddit_description():
+    text = "[image →] submitted by /u/johndoe [link] [comments]"
+    assert _REDDIT_BOILERPLATE.match(text)
+
+
+def test_reddit_boilerplate_pattern_does_not_match_real_content():
+    text = "Some interesting article about game development and retro consoles."
+    assert not _REDDIT_BOILERPLATE.match(text)
 
 
 def test_strip_images_replaces_with_link():
@@ -64,6 +74,17 @@ def test_fetch_source_returns_empty_on_http_error():
     mock_feed.entries = []
     with patch("feedparser.parse", return_value=mock_feed):
         items = fetch_source("Test", "https://example.com/rss")
+    assert items == []
+
+
+def test_fetch_source_skips_comments_only_entries():
+    mock_entry = MagicMock()
+    mock_entry.get.side_effect = lambda k, d="": {
+        "title": "Comments", "link": "https://news.ycombinator.com/item?id=123"
+    }.get(k, d)
+    mock_entry.content = None
+    with patch("feedparser.parse", return_value=_ok_feed(mock_entry)):
+        items = fetch_source("Hacker News", "https://news.ycombinator.com/rss")
     assert items == []
 
 

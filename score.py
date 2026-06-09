@@ -95,7 +95,17 @@ def score_items(
         if score_map.get(i, 0.0) >= config.scoring.min_score
     ]
     candidates.sort(key=lambda x: x[1], reverse=True)
-    top = candidates[: config.scoring.top_n]
+
+    source_counts: dict[str, int] = {}
+    top: list[tuple[int, float]] = []
+    for i, score in candidates:
+        src = items[i].source
+        if source_counts.get(src, 0) >= config.scoring.max_per_source:
+            continue
+        source_counts[src] = source_counts.get(src, 0) + 1
+        top.append((i, score))
+        if len(top) >= config.scoring.top_n:
+            break
 
     return [
         ScoredItem(

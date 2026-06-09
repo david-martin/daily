@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 CONTENT_THRESHOLD = 300
 _UA = "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
 _REDDIT_URL = re.compile(r"^https://(?:www\.)?reddit\.com/r/\w+/comments/\w+")
+_REDDIT_BOILERPLATE = re.compile(
+    r"^\s*(?:\[image\s*→\]\s*)?submitted by\b.*\[link\].*\[comments\]",
+    re.DOTALL | re.IGNORECASE,
+)
 
 
 @dataclass
@@ -70,6 +74,9 @@ def _extract_content(entry) -> Optional[str]:
     desc = entry.get("summary") or entry.get("description", "")
     if desc:
         body = _strip_images(desc)
+        visible = re.sub(r"<[^>]+>", "", body).strip()
+        if embed and _REDDIT_BOILERPLATE.match(visible):
+            return embed  # boilerplate adds nothing; embed is enough
         return (embed + "\n" + body) if embed else body
 
     return embed  # embed alone if no text content
@@ -103,6 +110,8 @@ def fetch_source(name: str, url: str, comic: bool = False) -> list[FetchedItem]:
         title = entry.get("title", "").strip()
         link = entry.get("link", "")
         if not title or not link:
+            continue
+        if title.lower() == "comments":
             continue
         content = _extract_comic(entry) if comic else _extract_content(entry)
         items.append(FetchedItem(title=title, url=link, source=name,

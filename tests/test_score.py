@@ -139,3 +139,35 @@ def test_score_items_forwards_api_key(cfg, items):
         mock_cls.return_value.messages.create.return_value = _mock_response(scores)
         score_items(items, cfg, "my-secret-key")
         assert mock_cls.call_args.kwargs["api_key"] == "my-secret-key"
+
+
+def test_score_items_caps_per_source(cfg):
+    # 4 items from "Feed A" all scoring high, 1 item from "Feed B" scoring lower
+    mixed_items = [
+        FetchedItem(title=f"A{i}", url=f"https://a.com/{i}", source="Feed A",
+                    content="", is_comic=False)
+        for i in range(4)
+    ] + [
+        FetchedItem(title="B0", url="https://b.com/0", source="Feed B",
+                    content="", is_comic=False)
+    ]
+    cap_cfg = Config(
+        sources=[],
+        scoring=Scoring(
+            profile="x", categories=["y"], top_n=5, min_score=4.0, max_per_source=2
+        ),
+        output_dir="/tmp",
+        model="claude-haiku-4-5-20251001",
+    )
+    scores = [
+        {"id": 0, "score": 9}, {"id": 1, "score": 8},
+        {"id": 2, "score": 7}, {"id": 3, "score": 6},
+        {"id": 4, "score": 5},
+    ]
+    with patch("anthropic.Anthropic") as mock_cls:
+        mock_cls.return_value.messages.create.return_value = _mock_response(scores)
+        result = score_items(mixed_items, cap_cfg, "key")
+    a_count = sum(1 for r in result if r.source == "Feed A")
+    b_count = sum(1 for r in result if r.source == "Feed B")
+    assert a_count == 2
+    assert b_count == 1
