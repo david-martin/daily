@@ -83,7 +83,15 @@ def main() -> None:
     prev_date = db.prev_briefing_date(args.db, today)
     stored = db.get_items_for_date(args.db, today)
 
-    generate.generate_day(config.output_dir, TEMPLATES_DIR, today, stored, prev_date)
+    scoring_info = {
+        "model": config.model,
+        "categories": config.scoring.categories,
+        "top_n": config.scoring.top_n,
+        "max_per_source": config.scoring.max_per_source,
+        "sources": [s.name for s in config.sources if not s.comic],
+    }
+    generate.generate_day(config.output_dir, TEMPLATES_DIR, today, stored, prev_date,
+                          scoring_info=scoring_info)
     all_dates = db.get_briefing_dates(args.db)
     generate.generate_index(config.output_dir, TEMPLATES_DIR, all_dates)
 

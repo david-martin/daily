@@ -25,13 +25,15 @@ def generate_day(
     date_str: str,
     items: list[Item],
     prev_date: Optional[str],
+    scoring_info: Optional[dict] = None,
 ) -> None:
     ranked = [i for i in items if not i.is_comic]
     comics = [i for i in items if i.is_comic]
     if prev_date is not None and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", prev_date):
         raise ValueError(f"prev_date must be YYYY-MM-DD, got: {prev_date!r}")
     html = _env(templates_dir).get_template("day.html.j2").render(
-        date_str=date_str, ranked=ranked, comics=comics, prev_date=prev_date,
+        date_str=date_str, ranked=ranked, comics=comics,
+        prev_date=prev_date, scoring_info=scoring_info,
     )
     out = Path(output_dir) / f"{date_str}.html"
     out.write_text(html, encoding="utf-8")
