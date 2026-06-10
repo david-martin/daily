@@ -50,6 +50,48 @@ def test_load_scoring_defaults(tmp_path):
     assert c.model == "claude-haiku-4-5-20251001"
 
 
+def test_calibration_defaults_empty(tmp_path):
+    p = write_config(tmp_path, {
+        "sources": [{"name": "T", "url": "https://example.com/rss"}],
+        "scoring": {"profile": "x", "categories": ["A"]},
+        "output_dir": "/tmp/out",
+    })
+    c = load(p)
+    assert c.scoring.calibration_good == []
+    assert c.scoring.calibration_bad == []
+
+
+def test_calibration_parsed(tmp_path):
+    p = write_config(tmp_path, {
+        "sources": [{"name": "T", "url": "https://example.com/rss"}],
+        "scoring": {
+            "profile": "x", "categories": ["A"],
+            "calibration": {
+                "good": ["Great article (Feed)"],
+                "bad": ["Boring article (Feed)"],
+            },
+        },
+        "output_dir": "/tmp/out",
+    })
+    c = load(p)
+    assert c.scoring.calibration_good == ["Great article (Feed)"]
+    assert c.scoring.calibration_bad == ["Boring article (Feed)"]
+
+
+def test_calibration_partial(tmp_path):
+    p = write_config(tmp_path, {
+        "sources": [{"name": "T", "url": "https://example.com/rss"}],
+        "scoring": {
+            "profile": "x", "categories": ["A"],
+            "calibration": {"good": ["Only good (Feed)"]},
+        },
+        "output_dir": "/tmp/out",
+    })
+    c = load(p)
+    assert c.scoring.calibration_good == ["Only good (Feed)"]
+    assert c.scoring.calibration_bad == []
+
+
 def test_load_custom_scoring(tmp_path):
     p = write_config(tmp_path, {
         "sources": [{"name": "T", "url": "https://example.com/rss"}],

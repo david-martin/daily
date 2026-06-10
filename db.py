@@ -1,5 +1,6 @@
 import sqlite3
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -13,6 +14,16 @@ class Item:
     is_comic: bool
     rank: Optional[int]
     reason: Optional[str] = None
+
+
+@dataclass
+class Feedback:
+    url: str
+    title: str
+    source: str
+    ai_score: Optional[float]
+    verdict: str  # "good", "bad", or "skip"
+    rated_at: str
 
 
 def init(db_path: str) -> None:
@@ -35,6 +46,16 @@ def init(db_path: str) -> None:
                 is_comic INTEGER DEFAULT 0,
                 rank     INTEGER,
                 reason   TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                url      TEXT PRIMARY KEY,
+                title    TEXT NOT NULL,
+                source   TEXT NOT NULL,
+                ai_score REAL,
+                verdict  TEXT NOT NULL CHECK (verdict IN ('good', 'bad', 'skip')),
+                rated_at TEXT NOT NULL
             )
         """)
         # Migration: add reason column to existing databases
@@ -106,6 +127,71 @@ def get_briefing_dates(db_path: str) -> list[str]:
         ).fetchall()
     conn.close()
     return [r[0] for r in rows]
+
+
+def get_unrated_items(db_path: str, days: int = 5) -> list[Item]:
+    """Non-comic items from the last `days` briefings with no feedback yet.
+
+    Deduplicated by URL (an item can appear in several briefings); most
+    recent first, then highest-scored first.
+    """
+    with sqlite3.connect(db_path) as conn:
+        dates = [r[0] for r in conn.execute(
+            "SELECT date FROM briefings ORDER BY date DESC LIMIT ?", (days,)
+        ).fetchall()]
+        rows = []
+        if dates:
+            placeholders = ",".join("?" * len(dates))
+            rows = conn.execute(
+                f"""SELECT title, url, source, MAX(score), reason, MAX(date)
+                    FROM items
+                    WHERE is_comic = 0 AND date IN ({placeholders})
+                      AND url NOT IN (SELECT url FROM feedback)
+                    GROUP BY url
+                    ORDER BY MAX(date) DESC, MAX(score) DESC""",
+                dates,
+            ).fetchall()
+    conn.close()
+    return [
+        Item(title=r[0], url=r[1], source=r[2], content=None,
+             score=r[3], is_comic=False, rank=None, reason=r[4])
+        for r in rows
+    ]
+
+
+def store_feedback(
+    db_path: str,
+    url: str,
+    title: str,
+    source: str,
+    ai_score: Optional[float],
+    verdict: str,
+    rated_at: Optional[str] = None,
+) -> None:
+    if rated_at is None:
+        rated_at = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO feedback
+               (url, title, source, ai_score, verdict, rated_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (url, title, source, ai_score, verdict, rated_at),
+        )
+    conn.close()
+
+
+def get_feedback(db_path: str) -> list[Feedback]:
+    with sqlite3.connect(db_path) as conn:
+        rows = conn.execute(
+            """SELECT url, title, source, ai_score, verdict, rated_at
+               FROM feedback ORDER BY rated_at DESC"""
+        ).fetchall()
+    conn.close()
+    return [
+        Feedback(url=r[0], title=r[1], source=r[2], ai_score=r[3],
+                 verdict=r[4], rated_at=r[5])
+        for r in rows
+    ]
 
 
 def prev_briefing_date(db_path: str, date_str: str) -> Optional[str]:

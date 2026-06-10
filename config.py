@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import yaml
 
@@ -21,6 +21,8 @@ class Scoring:
     top_n: int = 10
     min_score: float = 4.0
     max_per_source: int = 3
+    calibration_good: list[str] = field(default_factory=list)
+    calibration_bad: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -51,12 +53,15 @@ def load(path: str | Path) -> Config:
         ]
 
         sd = data["scoring"]
+        calibration = sd.get("calibration") or {}
         scoring = Scoring(
             profile=sd["profile"],
             categories=sd["categories"],
             top_n=sd.get("top_n", 10),
             min_score=float(sd.get("min_score", 4.0)),
             max_per_source=int(sd.get("max_per_source", 3)),
+            calibration_good=list(calibration.get("good") or []),
+            calibration_bad=list(calibration.get("bad") or []),
         )
 
         return Config(

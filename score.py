@@ -40,6 +40,20 @@ def _build_prompt(items: list[FetchedItem], config: Config) -> str:
         )
     items_text = "\n\n".join(item_lines)
 
+    calibration = ""
+    good = config.scoring.calibration_good
+    bad = config.scoring.calibration_bad
+    if good or bad:
+        parts = ["Calibration — the reader rated these past items:"]
+        if good:
+            parts.append("Worth reading:")
+            parts.extend(f'  - "{t}"' for t in good)
+        if bad:
+            parts.append("Not worth reading:")
+            parts.extend(f'  - "{t}"' for t in bad)
+        parts.append("Use these to calibrate relevance judgements.")
+        calibration = "\n" + "\n".join(parts) + "\n"
+
     return f"""Score each news item 1-10 for relevance to this personal profile:
 
 {config.scoring.profile}
@@ -48,7 +62,7 @@ Category priority (listed highest to lowest priority):
 {categories}
 
 Scoring guide: 7-10 = clearly relevant and worth reading; 4-6 = tangentially related; 1-3 = not relevant.
-
+{calibration}
 Return ONLY a JSON array with no other text. Each entry must include:
 - "id": the item index
 - "score": integer 1-10

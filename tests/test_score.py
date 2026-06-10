@@ -58,6 +58,30 @@ def test_score_items_empty_input_returns_empty(cfg):
     assert result == []
 
 
+def test_build_prompt_includes_calibration(cfg, items):
+    cfg.scoring.calibration_good = ["Great LLM article (Feed)"]
+    cfg.scoring.calibration_bad = ["Boring trailer (r/gaming)"]
+    prompt = _build_prompt(items, cfg)
+    assert "Calibration" in prompt
+    assert "Worth reading:" in prompt
+    assert "Great LLM article (Feed)" in prompt
+    assert "Not worth reading:" in prompt
+    assert "Boring trailer (r/gaming)" in prompt
+
+
+def test_build_prompt_omits_calibration_when_empty(cfg, items):
+    prompt = _build_prompt(items, cfg)
+    assert "Calibration" not in prompt
+    assert "Worth reading:" not in prompt
+
+
+def test_build_prompt_calibration_good_only(cfg, items):
+    cfg.scoring.calibration_good = ["Great LLM article (Feed)"]
+    prompt = _build_prompt(items, cfg)
+    assert "Worth reading:" in prompt
+    assert "Not worth reading:" not in prompt
+
+
 def test_score_items_filters_below_min_score(cfg, items):
     scores = [
         {"id": 0, "score": 8}, {"id": 1, "score": 3},
