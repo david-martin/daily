@@ -173,6 +173,32 @@ def test_fetch_source_falls_back_to_description():
     assert items[0].content == "<p>Fallback desc</p>"
 
 
+def test_trafilatura_text_is_html_escaped():
+    """Article prose mentioning literal tags must not inject markup.
+
+    An unescaped <textarea> in body text swallows the rest of the page."""
+    mock_entry = MagicMock()
+    mock_entry.content = None
+    mock_entry.get.side_effect = lambda k, d="": {
+        "title": "Article", "link": "https://example.com/1", "summary": "",
+    }.get(k, d)
+    prose = ("This took measurements of the <textarea> inside the "
+             "<navigation-search> Web Component. " * 20)
+    with patch("feedparser.parse", return_value=_ok_feed(mock_entry)):
+        with patch("trafilatura.fetch_url", return_value="<html>x</html>"):
+            with patch("trafilatura.extract", return_value=prose):
+                items = fetch_source("Test", "https://example.com/rss")
+    assert "<textarea>" not in items[0].content
+    assert "&lt;textarea&gt;" in items[0].content
+    assert items[0].content.startswith("<p>")
+
+
+def test_paragraphs_to_html_splits_and_escapes():
+    from fetch import _paragraphs_to_html
+    html = _paragraphs_to_html("First para.\n\nSecond <b>para</b>.")
+    assert html == "<p>First para.</p>\n<p>Second &lt;b&gt;para&lt;/b&gt;.</p>"
+
+
 def test_comic_fetch_embeds_image_from_summary():
     mock_entry = MagicMock()
     mock_entry.content = None

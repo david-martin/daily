@@ -75,6 +75,16 @@ def _extract_reddit_link(summary_html: str) -> Optional[str]:
     return None
 
 
+def _paragraphs_to_html(plain: str) -> str:
+    """Wrap trafilatura plain text in <p> tags, escaping the text.
+
+    The text is prose, not markup — articles that mention literal tags
+    like <textarea> would otherwise inject them into the page.
+    """
+    paragraphs = [p.strip() for p in plain.split("\n\n") if p.strip()]
+    return "<p>" + "</p>\n<p>".join(_escape(p) for p in paragraphs) + "</p>"
+
+
 def _extract_content(entry) -> Optional[str]:
     """Extract article text for non-Reddit items (no embed logic)."""
     url = entry.get("link", "")
@@ -93,8 +103,7 @@ def _extract_content(entry) -> Optional[str]:
             if downloaded:
                 plain = trafilatura.extract(downloaded)
                 if plain and len(plain) > CONTENT_THRESHOLD:
-                    paragraphs = [p.strip() for p in plain.split("\n\n") if p.strip()]
-                    return "<p>" + "</p>\n<p>".join(paragraphs) + "</p>"
+                    return _paragraphs_to_html(plain)
         except Exception as e:
             logger.warning("trafilatura failed for %s: %s", url, e)
 
@@ -122,8 +131,7 @@ def _fetch_reddit_content(entry, reddit_url: str, external_url: Optional[str]) -
             if downloaded:
                 plain = trafilatura.extract(downloaded)
                 if plain and len(plain) > CONTENT_THRESHOLD:
-                    paragraphs = [p.strip() for p in plain.split("\n\n") if p.strip()]
-                    body = "<p>" + "</p>\n<p>".join(paragraphs) + "</p>"
+                    body = _paragraphs_to_html(plain)
         except Exception as e:
             logger.warning("trafilatura failed for %s: %s", external_url, e)
 
