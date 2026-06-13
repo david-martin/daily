@@ -58,8 +58,16 @@ def main() -> None:
     new_comics = [c for c in comics if not db.comic_seen(args.db, c.url, before_date=today)]
     logger.info("%d new comic(s)", len(new_comics))
 
-    logger.info("Scoring %d regular items", len(regular))
-    scored = scorer.score_items(regular, config, api_key)
+    # Drop regular items already shown on a previous day. Newsletters and
+    # blogs keep recent posts in their feed for days, so without this the
+    # same entry reappears every morning until it ages out of the feed.
+    already_seen = db.seen_urls(args.db, before_date=today)
+    fresh = [r for r in regular if r.url not in already_seen]
+    logger.info("%d regular items (%d dropped as already shown)",
+                len(fresh), len(regular) - len(fresh))
+
+    logger.info("Scoring %d regular items", len(fresh))
+    scored = scorer.score_items(fresh, config, api_key)
     logger.info("%d items kept after scoring", len(scored))
 
     db_items = [

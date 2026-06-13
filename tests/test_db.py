@@ -2,7 +2,7 @@ import pytest
 import sqlite3
 from db import (Item, init, comic_seen, store_briefing, get_items_for_date,
                 get_briefing_dates, prev_briefing_date, get_unrated_items,
-                store_feedback, get_feedback)
+                store_feedback, get_feedback, seen_urls)
 
 
 @pytest.fixture
@@ -95,6 +95,34 @@ def test_comic_seen_does_not_match_non_comic(db_path):
                   content="<p>text</p>", score=7.0, is_comic=False, rank=1)]
     store_briefing(db_path, "2026-06-06", "2026-06-06T07:00:00Z", items)
     assert comic_seen(db_path, "https://example.com/1") is False
+
+
+def test_seen_urls_empty_db(db_path):
+    assert seen_urls(db_path) == set()
+
+
+def test_seen_urls_returns_stored(db_path):
+    items = [Item(title="A", url="https://example.com/a", source="Feed",
+                  content=None, score=8.0, is_comic=False, rank=1)]
+    store_briefing(db_path, "2026-06-06", "2026-06-06T07:00:00Z", items)
+    assert seen_urls(db_path) == {"https://example.com/a"}
+
+
+def test_seen_urls_before_date_excludes_same_day(db_path):
+    items = [Item(title="A", url="https://example.com/a", source="Feed",
+                  content=None, score=8.0, is_comic=False, rank=1)]
+    store_briefing(db_path, "2026-06-06", "2026-06-06T07:00:00Z", items)
+    # Same-day re-run: today's own items must not count as already seen.
+    assert seen_urls(db_path, before_date="2026-06-06") == set()
+    # A later day sees them as already shown.
+    assert seen_urls(db_path, before_date="2026-06-07") == {"https://example.com/a"}
+
+
+def test_seen_urls_includes_comics(db_path):
+    items = [Item(title="C", url="https://xkcd.com/1/", source="XKCD",
+                  content=None, score=None, is_comic=True, rank=None)]
+    store_briefing(db_path, "2026-06-06", "2026-06-06T07:00:00Z", items)
+    assert "https://xkcd.com/1/" in seen_urls(db_path)
 
 
 def test_init_creates_feedback_table(db_path):

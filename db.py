@@ -81,6 +81,24 @@ def comic_seen(db_path: str, url: str, before_date: Optional[str] = None) -> boo
     return row is not None
 
 
+def seen_urls(db_path: str, before_date: Optional[str] = None) -> set[str]:
+    """URLs of items stored before `before_date` (all dates if None).
+
+    Used to drop items already shown on a previous day, so the same
+    feed entry isn't re-shown while it lingers in an RSS feed. Using
+    `before_date=today` lets same-day re-runs keep their own items.
+    """
+    with sqlite3.connect(db_path) as conn:
+        if before_date:
+            rows = conn.execute(
+                "SELECT DISTINCT url FROM items WHERE date < ?", (before_date,)
+            ).fetchall()
+        else:
+            rows = conn.execute("SELECT DISTINCT url FROM items").fetchall()
+    conn.close()
+    return {r[0] for r in rows}
+
+
 def store_briefing(
     db_path: str,
     date_str: str,
